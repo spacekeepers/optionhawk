@@ -147,21 +147,17 @@ Provide:
 Keep it sharp, practical, and trader-focused. Use dollar amounts and percentages.`;
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+        body: JSON.stringify({ prompt }),
       });
       const data = await response.json();
-      const text =
-        data.content?.map((b) => b.text || "").join("") ||
-        "No analysis available.";
-      setAnalysis(text);
-    } catch (e) {
+      if (!response.ok) {
+        throw new Error(data.error || "Request failed");
+      }
+      setAnalysis(data.text || "No analysis available.");
+    } catch {
       setAnalysis("Error fetching analysis. Please try again.");
     }
     setLoadingAnalysis(false);
