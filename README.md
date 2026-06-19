@@ -2,6 +2,15 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Environment variables
+
+This project includes Vercel serverless functions under `api/` that require:
+
+- `ANTHROPIC_API_KEY` — used by `api/analyze.js` for AI trade analysis.
+- `TRADIER_API_KEY` — used by `api/scan.js` for live quotes, price history, and option chains (sandbox token from [developer.tradier.com](https://developer.tradier.com)).
+
+Set both in your Vercel project's Environment Variables before deploying.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
