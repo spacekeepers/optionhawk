@@ -14,37 +14,6 @@ const WATCHLIST = [
   { ticker: "IWM", name: "iShares Russell 2000 ETF", sector: "ETF" },
 ];
 
-const SETUPS = [
-  "Bull Flag Breakout",
-  "Pre-Earnings Squeeze",
-  "Bear Flag Breakdown",
-  "Earnings Volatility Crush",
-  "IV Spike + Oversold",
-  "Gap Fill Setup",
-  "Support Bounce",
-  "Resistance Break",
-  "Momentum Continuation",
-  "Reversal at Key Level",
-  "High OI Strike Magnet",
-];
-
-function generateMockPrice(ticker) {
-  const bases = {
-    AAPL: 189, TSLA: 248, NVDA: 875, SPY: 512, AMD: 172,
-    META: 490, AMZN: 184, MSFT: 415, QQQ: 441, GOOGL: 171,
-  };
-  const base = bases[ticker] || 100;
-  return +(base + (Math.random() - 0.5) * base * 0.03).toFixed(2);
-}
-
-function getRandomSetup() {
-  return SETUPS[Math.floor(Math.random() * SETUPS.length)];
-}
-
-function getRandomDirection() {
-  return Math.random() > 0.5 ? "CALL" : "PUT";
-}
-
 export default function App() {
   const [alerts, setAlerts] = useState([]);
   const [scanning, setScanning] = useState(false);
@@ -67,53 +36,33 @@ export default function App() {
     setScanning(true);
     setScanCount((c) => c + 1);
     addLog("🔍 Initiating full market scan...");
-    await new Promise((r) => setTimeout(r, 600));
 
-    const newAlerts = [];
-    for (const stock of watchlist) {
-      const price = generateMockPrice(stock.ticker);
-      const direction = getRandomDirection();
-      const setup = getRandomSetup();
-      const ivRank = Math.floor(Math.random() * 100);
-      const confidence = Math.floor(55 + Math.random() * 40);
-      const dte = [7, 14, 21, 30, 45][Math.floor(Math.random() * 5)];
-      const strikeOffset =
-        direction === "CALL"
-          ? +(price * (1 + (Math.random() * 0.07 + 0.02))).toFixed(0)
-          : +(price * (1 - (Math.random() * 0.07 + 0.02))).toFixed(0);
-      const premium = +(Math.random() * 4 + 0.3).toFixed(2);
-      const targetPremium = +(premium * (2 + Math.random() * 4)).toFixed(2);
-      const riskReward = +(targetPremium / premium).toFixed(1);
-      const signal =
-        confidence >= 80 ? "STRONG" : confidence >= 65 ? "MODERATE" : "WATCH";
-
-      newAlerts.push({
-        id: `${stock.ticker}-${Date.now()}-${Math.random()}`,
-        ticker: stock.ticker,
-        name: stock.name,
-        sector: stock.sector,
-        price,
-        direction,
-        setup,
-        ivRank,
-        confidence,
-        dte,
-        strike: strikeOffset,
-        premium,
-        targetPremium,
-        riskReward,
-        signal,
-        timestamp: new Date().toLocaleTimeString(),
+    try {
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watchlist }),
       });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Scan failed");
+      }
 
-      await new Promise((r) => setTimeout(r, 80));
-      addLog(`✅ ${stock.ticker} scanned → ${direction} ${signal} (${confidence}%)`);
+      for (const alert of data.alerts) {
+        await new Promise((r) => setTimeout(r, 80));
+        addLog(`✅ ${alert.ticker} scanned → ${alert.direction} ${alert.signal} (${alert.confidence}%)`);
+      }
+      for (const err of data.errors || []) {
+        addLog(`⚠️ ${err.ticker} skipped — ${err.message}`);
+      }
+
+      setAlerts(data.alerts);
+      addLog(`🎯 Scan complete. ${data.alerts.filter((a) => a.signal === "STRONG").length} strong setups found.`);
+    } catch (e) {
+      addLog(`⚠️ Scan failed: ${e.message}`);
     }
 
-    const sorted = newAlerts.sort((a, b) => b.confidence - a.confidence);
-    setAlerts(sorted);
     setScanning(false);
-    addLog(`🎯 Scan complete. ${sorted.filter((a) => a.signal === "STRONG").length} strong setups found.`);
   }, [watchlist]);
 
   const fetchAIAnalysis = async (alert) => {
